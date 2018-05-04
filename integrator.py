@@ -121,9 +121,11 @@ class modified_midpoint(integrator):
         return final_state
 
 class bulirsch_stoer(modified_midpoint):
+    from lagrange import lagrange
+
     def step(self, state, time = 0, diff_eq_args = ()):
         
-        polynomial = point_lagrange(eval_x = 0)
+        polynomial = lagrange(eval_x = 0)
         last_x = float('Inf')
 
         for i in range(self._max_substeps):
@@ -141,3 +143,6 @@ class bulirsch_stoer(modified_midpoint):
                 last_x = new_x
 
         raise ValueError("Exceeded max iterations")
+
+if __name__ == "__main__":
+    pass

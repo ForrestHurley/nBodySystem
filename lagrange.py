@@ -10,3 +10,6 @@ class lagrange(object):
     @property
     def at_x(self):
         pass
+
+if __name__ == "__main__":
+    pass

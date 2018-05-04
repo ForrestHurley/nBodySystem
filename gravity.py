@@ -45,3 +45,5 @@ class quadropole_tree(gravity):
     def _get_acceleration(self, positions):
         pass
 
+if __name__ == "__main__":
+    pass
