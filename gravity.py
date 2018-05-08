@@ -8,6 +8,7 @@ class gravity(object):
         self.masses = masses
         self.max_acceleration = max_acceleration
         self.verbose = verbose
+        self.printed = False
 
     def get_acceleration(self, positions):
         if not positions.shape[0] == self.masses.shape[0]:
@@ -15,11 +16,12 @@ class gravity(object):
         raw_accelerations = self._get_acceleration(positions)
         softened = np.minimum(raw_accelerations, self.max_acceleration)
 
-        if self.verbose:
+        if self.verbose and not self.printed:
             soft_count = np.sum(np.logical_not(softened == raw_accelerations))
             if soft_count > 0:
-                print("Softened {0} bodies".format(soft_count))
-        
+                print("Softened {0} components".format(soft_count))
+                self.printed = True        
+
         return softened
 
     def _get_acceleration(self, positions):

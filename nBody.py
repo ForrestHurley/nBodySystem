@@ -3,6 +3,8 @@ import integrator
 import gravity
 import csv
 
+from plot import plotter, anim_plotter
+
 class body_differentials(integrator.differential_equation):
     def __init__(self, masses, *args, **kwargs):
         super().__init__()
@@ -26,6 +28,7 @@ class system(object):
         self._velocities = None
         self._names = np.array([])
         self._history = []
+        self.h = 0.1
 
     @classmethod
     def from_mass_state(cls, masses, locations, velocities):
@@ -55,11 +58,13 @@ class system(object):
 
     @staticmethod
     def state_to_loc_vel(state):
-        return state[:,0], state[:,1]
+        loc = np.take(state, 0, axis = -2)
+        vel = np.take(state, 1, axis = -2)
+        return loc, vel
 
     @staticmethod
     def loc_vel_to_state(loc, vel):
-        return np.stack([loc, vel], axis = 1)
+        return np.stack([loc, vel], axis = -2)
 
     def add_bodies_from_file(self, file_name):
         with open(file_name,'r') as csv_file:
@@ -101,20 +106,35 @@ class system(object):
 
 
     def run_simulation(self, time):
-        self.history = np.array([])
-
-        diff_eq = body_differentials(self._masses)
-        integ = integrator.bulirsch_stoer(max_substeps = 100, diff_eq = diff_eq, h = 0.03, steps = 200)
+        diff_eq = body_differentials(self._masses,
+            max_acceleration = 1e10)
+        integ = integrator.bulirsch_stoer(
+            max_substeps = 100, 
+            diff_eq = diff_eq, 
+            h = self.h, 
+            steps = int(time / self.h),
+            error_tolerance = 1e-5,
+            ignore_overruns = True)
         results, times = integ.integrate(state = self.get_state(), save_steps = True, initial_time = 0) 
 
-        pass
+        self._history = [times, np.array(results)]
 
-    def animate(self, rate = 1):
-        pass
-    
+        return self._history
+
+    def draw(self, rate = -1):
+        positions, velocities = system.state_to_loc_vel(self._history[1])
+
+        positions = np.transpose(positions, (1, 0, 2))
+
+        try:
+            self.plot3d.plot(positions, show = True)
+        except AttributeError:
+            self.plot3d = anim_plotter()
+            self.plot3d.plot(positions, show = True)
 
 if __name__ == "__main__":
     file_name = 'planets.csv'
     solar_system = system.from_file(file_name)
-    solar_system.run_simulation(10)
-    solar_system.animate()
+    solar_system.h = 0.1
+    result = solar_system.run_simulation(50)
+    solar_system.draw()
