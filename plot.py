@@ -50,12 +50,17 @@ class anim_plotter(plotter):
         return self.ax_plots
 
     def plot(self, data, *args, **kwargs):
+        kwargs['show'] = False
         fig = super().plot(data, *args, **kwargs)
 
         count = self.data.shape[1]
 
-        ani = animation.FuncAnimation(fig, self.update, count, interval = 1000, blit = False)
+        print(count)
+
+        ani = animation.FuncAnimation(fig, self.update, count, interval = 50, blit = False)
+
+        plt.show()
+        return fig
 
     def _draw_plot(self, ax, datum):
-        print(datum[0,0])
-        self.ax_plots.append(ax.plot(datum[0,0],datum[0,1],datum[0,2],style='bx'))
+        self.ax_plots.append(ax.plot([datum[0,0]],[datum[0,1]],[datum[0,2]],marker = 'o')[0])
