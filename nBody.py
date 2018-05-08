@@ -4,14 +4,13 @@ import gravity
 import csv
 
 class system(object):
-    def __init__(self,animate = True):
-        self.animate = animate
+    def __init__(self):
         self.gravity = gravity.particle_particle
         self.integrate = integrator.bulirsch_stoer
-        self._locations = np.array([])
+        self._locations = None
         self._masses = np.array([])
-        self._velocities = np.array([])
-        self._names = []
+        self._velocities = None
+        self._names = np.array([])
         self._history = []
 
     @classmethod
@@ -50,10 +49,19 @@ class system(object):
             raise ValueError("Size of arrays must be equal!")
         if names is None:
             names = np.full(masses.shape,"")
+
+        if self._locations is None:
+            self._locations = locations
+        else:
+            self._locations = np.concatenate([self._locations, locations])
+
+        if self._velocities is None:
+            self._velocities = velocities
+        else:
+            self._velocities = np.concatenate([self._velocities, velocities])
+
         self._masses = np.concatenate([self._masses,masses])
-        self._locations = np.concatenate([self._locations,locations])
-        self._velocities = np.concatenate([self._velocities,velocities])
-        self._names = names
+        self._names = np.concatenate([self._names,names])
 
     def run_simulation(self, time):
         self.history = np.array([])
@@ -66,5 +74,5 @@ class system(object):
 if __name__ == "__main__":
     file_name = 'planets.csv'
     solar_system = system.from_file(file_name)
-    system.run_simulation(10)
-    system.animate()
+    solar_system.run_simulation(10)
+    solar_system.animate()
