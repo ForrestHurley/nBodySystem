@@ -115,6 +115,10 @@ def is_close(a, b, abs_tol = 1e-12):
     return (a - b < abs_tol) & (a - b > -abs_tol)
 
 class bulirsch_stoer(modified_midpoint):
+    def __init__(self,ignore_overruns=False,error_tolerance=1e-12,*args,**kwargs)
+        super().__init__(*args,**kwargs)
+        self.ignore_overruns = ignore_overruns
+        self.error_tolerance = error_tolerance
     def step(self, state, time = 0, diff_eq_args = ()):
         
         polynomial = lagrange(eval_x = 0)
@@ -129,12 +133,14 @@ class bulirsch_stoer(modified_midpoint):
             polynomial.add_point(x = self.h / ( 2 * i ), y = estim) 
 
             new_x = polynomial.estimate
-            if np.all(is_close(new_x, last_x)):
+            if np.all(is_close(new_x, last_x, abs_tol = self.error_tolerance)):
                 return new_x
             else:
                 last_x = new_x
 
-        raise ValueError("Exceeded max iterations")
+        if not ignore_overruns:
+            raise ValueError("Exceeded max iterations")
+        return last_x
 
 class test_equation(differential_equation):
     k = np.array([-1,2])
