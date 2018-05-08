@@ -115,7 +115,7 @@ def is_close(a, b, abs_tol = 1e-12):
     return (a - b < abs_tol) & (a - b > -abs_tol)
 
 class bulirsch_stoer(modified_midpoint):
-    def __init__(self,ignore_overruns=False,error_tolerance=1e-12,*args,**kwargs)
+    def __init__(self,ignore_overruns=False,error_tolerance=1e-12,*args,**kwargs):
         super().__init__(*args,**kwargs)
         self.ignore_overruns = ignore_overruns
         self.error_tolerance = error_tolerance
@@ -138,7 +138,7 @@ class bulirsch_stoer(modified_midpoint):
             else:
                 last_x = new_x
 
-        if not ignore_overruns:
+        if not self.ignore_overruns:
             raise ValueError("Exceeded max iterations")
         return last_x
 
