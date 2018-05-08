@@ -1,4 +1,5 @@
 import numpy as np
+from itertools import permutations
 
 G = 6.6719199e-11 #https://www.nature.com/articles/nature13433
 
@@ -9,7 +10,7 @@ class gravity(object):
         self.verbose = verbose
 
     def get_acceleration(self, positions):
-        if not positions.shape[0] = self.masses.shape[0]:
+        if not positions.shape[0] == self.masses.shape[0]:
             raise ValueError("Object positions count not equal to number of masses")
         raw_accelerations = self._get_acceleration(positions)
         softened = np.minimum(raw_accelerations, self.max_acceleration)
@@ -25,13 +26,12 @@ class gravity(object):
         pass
 
 class particle_particle(gravity):
-    from itertools import permutations
     def _get_acceleration(self, positions):
-        body_iteration = permutations(zip(self.mass, self.positions, range(self.masses.shape[0])),2)
+        body_iteration = permutations(zip(self.masses, positions, range(self.masses.shape[0])),2)
 
-        forces = np.zeros(self.positions.shape)
+        forces = np.zeros(positions.shape)
 
-        for massA, positionA, idxA, massB, positionB, idxB in body_iteration:
+        for (massA, positionA, idxA), (massB, positionB, idxB) in body_iteration:
             direction = positionA - positionB 
             distance = np.linalg.norm(direction, axis = -1)
             force = G * massA * massB * direction / (distance * distance * distance)
@@ -46,4 +46,5 @@ class quadropole_tree(gravity):
         pass
 
 if __name__ == "__main__":
-    pass
+    test_gravity = particle_particle(np.array([10,20,30]))
+    print(test_gravity.get_acceleration(np.array([[0,0,0],[0,10,20],[10,3,-30]])))

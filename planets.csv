@@ -1,0 +1,3 @@
+name, mass, x, y, z, xv, yv, zv
+sun, 1, 0, 0, 0, 0, 0, 0
+earth, 0.01, 1, 0, 0, 0, 0.01, 0
