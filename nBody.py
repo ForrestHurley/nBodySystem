@@ -1,8 +1,9 @@
 import numpy as np
 import integrator
 import gravity
+from ephemerides import ephemerides
 import csv
-
+import time
 from plot import plotter, anim_plotter
 
 class body_differentials(integrator.differential_equation):
@@ -43,15 +44,32 @@ class system(object):
         return new_system
 
     @classmethod
+    def from_ephemerides(cls, file_name, objects = None, start_time = None):
+        ephem_data = ephemerides(file_name)
+        if not objects is None:
+            ephem_data.limit_objects(objects)
+
+        if start_time is None:
+            start_time = time.time()
+        state_array = ephem_data.state(start_time)
+        mass_array = ephem_data.masses
+
+        new_system = cls.from_state(state_array, mass_array)
+        return new_system
+
+    @classmethod
     def from_state(cls, state, masses):
         new_system = cls()
-        new_system.masses = masses
+        new_system.set_masses(masses)
         new_system.set_state(state)
         return new_system
 
     def set_state(self, state):
         self._locations = state[:,0]
         self._velocities = state[:,1]
+
+    def set_masses(self, masses):
+        self._masses = masses
 
     def get_state(self):
         return np.stack([self._locations, self._velocities], axis = 1)
@@ -105,16 +123,17 @@ class system(object):
         self._names = np.concatenate([self._names,names])
 
 
-    def run_simulation(self, time):
+    def run_simulation(self, time, verbose = False):
         diff_eq = body_differentials(self._masses,
             max_acceleration = 1e10)
         integ = integrator.bulirsch_stoer(
-            max_substeps = 100, 
+            max_substeps = 10, 
             diff_eq = diff_eq, 
             h = self.h, 
             steps = int(time / self.h),
             error_tolerance = 1e-5,
-            ignore_overruns = True)
+            ignore_overruns = True,
+            verbose = verbose)
         results, times = integ.integrate(state = self.get_state(), save_steps = True, initial_time = 0) 
 
         self._history = [times, np.array(results)]
@@ -133,8 +152,10 @@ class system(object):
             self.plot3d.plot(positions, show = True)
 
 if __name__ == "__main__":
-    file_name = 'planets.csv'
-    solar_system = system.from_file(file_name)
-    solar_system.h = 0.1
-    result = solar_system.run_simulation(50)
+    #file_name = 'planets.csv'
+    #solar_system = system.from_file(file_name)
+    file_name = '../Data/solarSystem.txt'
+    solar_system = system.from_ephemerides(file_name)
+    solar_system.h = 10000
+    result = solar_system.run_simulation(100000, verbose = True)
     solar_system.draw()

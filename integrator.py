@@ -9,10 +9,11 @@ class differential_equation(object):
         pass
 
 class integrator(object):
-    def __init__(self, diff_eq, h=1, steps=10):
+    def __init__(self, diff_eq, h=1, steps=10, verbose = False):
         self.h = h
         self.steps = steps
         self.diff_eq = diff_eq
+        self.verbose = verbose
 
     def integrate(self, state, save_steps = False, initial_time = 0, diff_eq_args = ()):
         if save_steps:
@@ -24,6 +25,8 @@ class integrator(object):
                         diff_eq_args = diff_eq_args)
             state_list.append(state)
             time_list.append(initial_time + i * self.h)
+            if self.verbose:
+                print("Finished iteration {0}".format(i))
 
         if save_steps:
             return state_list, time_list

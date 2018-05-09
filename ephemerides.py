@@ -52,8 +52,8 @@ class ephemerides(object):
         else:
             self._masses = \
                 np.array(
-                [spice.bodvrd(str(obj),"GM",1)[1] if spice.bodfnd(obj, "GM") else 0 for obj in self.object_list]
-                ) 
+                [spice.bodvrd(str(obj),"GM",1)[1] if spice.bodfnd(obj, "GM") else 0 for obj in self.object_list],
+                dtype='float') 
             return self._masses
 
     @property
@@ -63,8 +63,8 @@ class ephemerides(object):
         else:
             self._radii = \
                 np.array(
-                [spice.bodvrd(str(obj),"RADII",3)[1] if spice.bodfnd(obj,"RADII") else 0 for obj in self.object_list]
-                )
+                [spice.bodvrd(str(obj),"RADII",3)[1] if spice.bodfnd(obj,"RADII") else 0 for obj in self.object_list],
+                dtype='float')
             return self._radii
 
     @property
@@ -76,11 +76,13 @@ class ephemerides(object):
             return self._names
 
     def positions(self, time):
-        pos_array = np.array([spice.spkpos(str(obj), time, 'J2000', 'NONE', '0')[0] for obj in self.object_list])
+        pos_array = np.array([spice.spkpos(str(obj), time, 'J2000', 'NONE', '0')[0] for obj in self.object_list],
+            dtype='float')
         return np.array(pos_array)
 
     def state(self, time):
-        state_array = ([spice.spkezr(str(obj), time, 'J2000', 'NONE', '0')[0] for obj in self.object_list]) 
+        state_array = np.array([spice.spkezr(str(obj), time, 'J2000', 'NONE', '0')[0] for obj in self.object_list],
+            dtype='float') 
         return np.reshape(state_array,(-1,2,3))
 
     def velocities(self, time):
@@ -102,6 +104,7 @@ class ephemerides(object):
 if __name__ == "__main__":
     from plot import plotter, anim_plotter
     body_data = ephemerides.LimitObjects("../Data/solarSystem.txt",[10,199,299,399,499,599,699,799,899,999])
+    print(body_data.masses)
     paths = body_data.path()
     print(paths.shape)
     plot3d = anim_plotter()
