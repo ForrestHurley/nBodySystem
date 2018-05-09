@@ -7,10 +7,10 @@ class differential_equation(object):
         return self.evaluate(state, const_args, time = time)
 
     def evaluate(self, state, const_args = (), time = 0):
-        pass
+        return np.zeros(state.shape)
 
 class integrator(object):
-    def __init__(self, diff_eq, h=1, steps=10, verbose = False):
+    def __init__(self, diff_eq = differential_equation(), h=1, steps=10, verbose = False):
         self.h = h
         self.steps = steps
         self.diff_eq = diff_eq
@@ -123,16 +123,17 @@ def is_close(a, b, abs_tol = 1e-12):
     return (a - b < abs_tol) & (a - b > -abs_tol)
 
 class bulirsch_stoer(modified_midpoint):
-    def __init__(self,ignore_overruns=False,error_tolerance=1e-12,*args,**kwargs):
+    def __init__(self,initial_substeps = 10, ignore_overruns=False,error_tolerance=1e-12,*args,**kwargs):
         super().__init__(*args,**kwargs)
         self.ignore_overruns = ignore_overruns
         self.error_tolerance = error_tolerance
+        self.initial_substeps = initial_substeps
     def step(self, state, time = 0, diff_eq_args = ()):
         
         polynomial = lagrange(eval_x = 0)
         last_x = float('Inf')
 
-        for i in range(1, int(self._max_substeps/2)):
+        for i in range(int(self.initial_substeps / 2), int(self._max_substeps / 2)):
             estim = self.midpoint(state,
                 substeps = 2 * i,
                 time = time,

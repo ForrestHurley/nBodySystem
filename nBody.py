@@ -23,7 +23,6 @@ class body_differentials(integrator.differential_equation):
 class system(object):
     def __init__(self):
         self.gravity = gravity.particle_particle
-        self.integrate = integrator.bulirsch_stoer
         self._locations = None
         self._masses = np.array([])
         self._velocities = None
@@ -146,17 +145,18 @@ class system(object):
         self._names = np.concatenate([self._names,names])
 
 
-    def run_simulation(self, time, verbose = False):
+    def run_simulation(self, total_time, integ = None, verbose = False):
+
         diff_eq = body_differentials(self._masses,
             max_acceleration = 1e30)
-        integ = integrator.bulirsch_stoer(
-            max_substeps = 100, 
-            diff_eq = diff_eq, 
-            h = self.h, 
-            steps = int(time / self.h),
-            error_tolerance = 1e-5,
-            ignore_overruns = True,
-            verbose = verbose)
+
+        if integ is None:
+            integ = integrator.rk4()
+        integ.diff_eq = diff_eq
+        integ.h = self.h
+        integ.steps = int(total_time / self.h)
+        integ.verbose = verbose
+
         results, times = integ.integrate(state = self.get_state(), save_steps = True, initial_time = 0) 
 
         self._history = [times, np.array(results)]
@@ -170,7 +170,7 @@ class system(object):
         try:
             self.plot3d.plot(positions, show = True)
         except AttributeError:
-            self.plot3d = plotter()
+            self.plot3d = anim_plotter()
             self.plot3d.plot(positions, show = True)
 
 if __name__ == "__main__":
@@ -179,8 +179,7 @@ if __name__ == "__main__":
     solar_system = system.from_file(file_name, verbose = True)
     '''
     file_name = '../Data/solarSystem.txt'
-    solar_system = system.from_ephemerides(file_name,list(range(1,11)), verbose = False)
-    
-    solar_system.h = 60*60*12
-    result = solar_system.run_simulation(60*60*24*28*2, verbose = True)
+    solar_system = system.from_ephemerides(file_name,list(range(10,1000)), verbose = False)
+    solar_system.h = 60*60*24
+    result = solar_system.run_simulation(60*60*24*365.25, verbose = True)
     solar_system.draw()
