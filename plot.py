@@ -42,9 +42,10 @@ class plotter(object):
         self.ln_plots.append(ax.plot(datum[:,0],datum[:,1],datum[:,2]))
 
 class anim_plotter(plotter):
-    def __init__(self, history = 100, *args, **kwargs):
+    def __init__(self, rate = 1, history = 100, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.history = history
+        self.rate = rate
 
     def update(self,n):
         start = max(n - self.history, 0)
@@ -64,7 +65,7 @@ class anim_plotter(plotter):
 
         count = self.data.shape[1]
 
-        ani = animation.FuncAnimation(fig, self.update, count, interval = 50, blit = False)
+        ani = animation.FuncAnimation(fig, self.update, count, interval = 50 / self.rate, blit = False)
 
         plt.show()
         return fig

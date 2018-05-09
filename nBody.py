@@ -167,11 +167,18 @@ class system(object):
 
         positions = np.transpose(positions, (1, 0, 2))
 
-        try:
-            self.plot3d.plot(positions, show = True)
-        except AttributeError:
-            self.plot3d = anim_plotter()
-            self.plot3d.plot(positions, show = True)
+        if rate < 0:
+            try:
+                self.plot3d.plot(positions, show = True)
+            except AttributeError:
+                self.plot3d = anim_plotter()
+                self.plot3d.plot(positions, show = True)
+        else:
+            try:
+                self.plot3d_anim(positions, show = True)
+            except AttributeError:
+                self.plot3d_anim = anim_plotter()
+                self.plot3d_anim.plot(positions, show = True)
 
 if __name__ == "__main__":
     '''
@@ -180,6 +187,6 @@ if __name__ == "__main__":
     '''
     file_name = '../Data/solarSystem.txt'
     solar_system = system.from_ephemerides(file_name,list(range(10,1000)), verbose = False)
-    solar_system.h = 60*60*24
-    result = solar_system.run_simulation(60*60*24*365.25, verbose = True)
-    solar_system.draw()
+    solar_system.h = 60*60*1
+    result = solar_system.run_simulation(60*60*24*2, verbose = True)
+    solar_system.draw(rate = 1)
