@@ -1,5 +1,6 @@
 import numpy as np
 from lagrange import lagrange
+import sys
 
 class differential_equation(object):
     def __call__(self, state, const_args = (), time = 0):
@@ -16,6 +17,8 @@ class integrator(object):
         self.verbose = verbose
 
     def integrate(self, state, save_steps = False, initial_time = 0, diff_eq_args = ()):
+        if self.verbose:
+            print("Starting integration")
         if save_steps:
             state_list = []
             time_list = []
@@ -26,7 +29,9 @@ class integrator(object):
             state_list.append(state)
             time_list.append(initial_time + i * self.h)
             if self.verbose:
-                print("Finished iteration {0}".format(i))
+                sys.stdout.write("\033[K")
+                print("Finished iteration {0}".format(i),end="\r")
+                sys.stdout.flush()
 
         if save_steps:
             return state_list, time_list

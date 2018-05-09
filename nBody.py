@@ -38,13 +38,15 @@ class system(object):
         return new_system
 
     @classmethod
-    def from_file(cls, file_name):
+    def from_file(cls, file_name, verbose = False):
         new_system = cls()
         new_system.add_bodies_from_file(file_name)
+        if verbose:
+            print(new_system)
         return new_system
 
     @classmethod
-    def from_ephemerides(cls, file_name, objects = None, start_time = None):
+    def from_ephemerides(cls, file_name, objects = None, start_time = None, verbose = False):
         ephem_data = ephemerides(file_name)
         if not objects is None:
             ephem_data.limit_objects(objects)
@@ -53,26 +55,47 @@ class system(object):
             start_time = time.time()
         state_array = ephem_data.state(start_time)
         mass_array = ephem_data.masses
+        name_array = ephem_data.names
+    
+        new_system = cls.from_state(state_array, mass_array, name_array)
+        if verbose:
+            print(new_system)
 
-        new_system = cls.from_state(state_array, mass_array)
         return new_system
 
     @classmethod
-    def from_state(cls, state, masses):
+    def from_state(cls, state, masses, names = None):
         new_system = cls()
         new_system.set_masses(masses)
         new_system.set_state(state)
+        new_system.set_names(names)
         return new_system
 
+    def __str__(self):
+        out = "\n".join(
+            [" ".join([str(name),str(mass),str(loc),str(vel)]) \
+                for name, mass, loc, vel \
+                in zip(self._names, self._masses, self._locations, self._velocities)])
+        return out
+
     def set_state(self, state):
-        self._locations = state[:,0]
-        self._velocities = state[:,1]
+        self._locations, self._velocities = \
+            system.state_to_loc_vel(state)
 
     def set_masses(self, masses):
         self._masses = masses
 
+    def set_names(self, names):
+        self._names = names
+
     def get_state(self):
-        return np.stack([self._locations, self._velocities], axis = 1)
+        return system.loc_vel_to_state(self._locations, self._velocities)
+
+    def get_loc_vel(self):
+        return self._locations, self._velocities
+    
+    def get_masses(self):
+        return self._masses
 
     @staticmethod
     def state_to_loc_vel(state):
@@ -125,9 +148,9 @@ class system(object):
 
     def run_simulation(self, time, verbose = False):
         diff_eq = body_differentials(self._masses,
-            max_acceleration = 1e10)
+            max_acceleration = 1e30)
         integ = integrator.bulirsch_stoer(
-            max_substeps = 10, 
+            max_substeps = 100, 
             diff_eq = diff_eq, 
             h = self.h, 
             steps = int(time / self.h),
@@ -137,7 +160,6 @@ class system(object):
         results, times = integ.integrate(state = self.get_state(), save_steps = True, initial_time = 0) 
 
         self._history = [times, np.array(results)]
-
         return self._history
 
     def draw(self, rate = -1):
@@ -148,14 +170,17 @@ class system(object):
         try:
             self.plot3d.plot(positions, show = True)
         except AttributeError:
-            self.plot3d = anim_plotter()
+            self.plot3d = plotter()
             self.plot3d.plot(positions, show = True)
 
 if __name__ == "__main__":
-    #file_name = 'planets.csv'
-    #solar_system = system.from_file(file_name)
+    '''
+    file_name = 'planets.csv'
+    solar_system = system.from_file(file_name, verbose = True)
+    '''
     file_name = '../Data/solarSystem.txt'
-    solar_system = system.from_ephemerides(file_name)
-    solar_system.h = 10000
-    result = solar_system.run_simulation(100000, verbose = True)
+    solar_system = system.from_ephemerides(file_name,list(range(1,11)), verbose = False)
+    
+    solar_system.h = 60*60*12
+    result = solar_system.run_simulation(60*60*24*28*2, verbose = True)
     solar_system.draw()

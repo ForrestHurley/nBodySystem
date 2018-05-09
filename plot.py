@@ -64,8 +64,6 @@ class anim_plotter(plotter):
 
         count = self.data.shape[1]
 
-        print(count)
-
         ani = animation.FuncAnimation(fig, self.update, count, interval = 50, blit = False)
 
         plt.show()
