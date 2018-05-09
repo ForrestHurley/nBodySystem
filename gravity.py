@@ -1,5 +1,5 @@
 import numpy as np
-from itertools import permutations
+from itertools import permutations, product
 
 class gravity(object):
     def __init__(self, masses, max_acceleration = 1e4, verbose = True):
@@ -8,10 +8,10 @@ class gravity(object):
         self.max_acceleration = max_acceleration
         self.verbose = verbose
 
-    def get_acceleration(self, positions):
-        if not positions.shape[0] == self.masses.shape[0]:
+    def get_acceleration(self, particles, *args, **kwargs):
+        if not particles.shape[0] == self.masses.shape[0]:
             raise ValueError("Object positions count not equal to number of masses")
-        raw_accelerations = self._get_acceleration(positions)
+        raw_accelerations = self._get_acceleration(particles = particles, *args, **kwargs)
         softened = np.minimum(raw_accelerations, self.max_acceleration)
 
         if self.verbose:
@@ -21,21 +21,34 @@ class gravity(object):
 
         return softened
 
-    def _get_acceleration(self, positions):
+    def _get_acceleration(self, particles):
         pass
 
 class particle_particle(gravity):
-    def _get_acceleration(self, positions):
-        body_iteration = permutations(zip(self.masses, positions, range(self.masses.shape[0])),2)
-
-        accelerations = np.zeros(positions.shape)
-
-        for (massA, positionA, idxA), (massB, positionB, idxB) in body_iteration:
-            direction = positionA - positionB 
+    def two_body_acc(self, posA, posB, massA):
+            direction = posA - posB 
             distance = np.linalg.norm(direction, axis = -1)
             norm_dir = direction / distance
-            acc = (self.G * massA / (distance * distance)) * norm_dir
-            accelerations[idxB] += acc
+            return (self.G * massA / (distance * distance)) * norm_dir
+        
+    def _get_acceleration(self, particles):
+        body_iteration = permutations(zip(self.masses, particles, range(self.masses.shape[0])),2)
+
+        accelerations = np.zeros(particles.shape)
+
+        for (massA, positionA, idxA), (massB, positionB, idxB) in body_iteration:
+            accelerations[idxB] += self.two_body_acc(positionA, positionB, massA)
+
+        return accelerations
+
+class particle_rail(particle_particle):
+    def _get_acceleration(self, particles, rails):
+        body_rail_iteration = product(zip(self.masses, rails), zip(particles, range(particles.shape[0])))
+
+        accelerations = np.zeros(particles.shape)
+
+        for (mass, big_body_pos), (small_body_pos, idx) in body_iteration:
+            accelerations[idx] += self.two_body_acc(big_body_pos, small_body_pos, mass)
 
         return accelerations
 

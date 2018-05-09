@@ -20,6 +20,19 @@ class body_differentials(integrator.differential_equation):
         dx = vel
         return system.loc_vel_to_state(dx,dv)
 
+class ephemerides_rails(integrator.differential_equation):
+    def __init__(self, ephemerides, *args, **kwargs):
+        super().__init__()
+        self.ephemerides = ephemerides
+        self.gravity = gravity.particle_rail(masses = ephemerides.masses, *args, **kwargs)
+
+    def evaluate(self, state, constant_args = (), time = 0):
+        eph_locs = ephemerides.positions(time)
+        loc, vel = system.state_to_loc_vel(state)
+        dv = self.gravity.get_acceleration(particles=loc,rails=eph_locs)
+        dx = vel
+        return system.loc_vel_to_state(dx,dv)
+
 class system(object):
     def __init__(self):
         self.gravity = gravity.particle_particle
@@ -31,21 +44,21 @@ class system(object):
         self.h = 0.1
 
     @classmethod
-    def from_mass_state(cls, masses, locations, velocities):
-        new_system = cls()
+    def from_mass_state(cls, masses, locations, velocities, *args, **kwargs):
+        new_system = cls(*args, **kwargs)
         new_system.add_bodies(masses, locations, velocities)
         return new_system
 
     @classmethod
-    def from_file(cls, file_name, verbose = False):
-        new_system = cls()
+    def from_file(cls, file_name, verbose = False, *args, **kwargs):
+        new_system = cls(*args, **kwargs)
         new_system.add_bodies_from_file(file_name)
         if verbose:
             print(new_system)
         return new_system
 
     @classmethod
-    def from_ephemerides(cls, file_name, objects = None, start_time = None, verbose = False):
+    def from_ephemerides(cls, file_name, objects = None, start_time = None, verbose = False, *args, **kwargs):
         ephem_data = ephemerides(file_name)
         if not objects is None:
             ephem_data.limit_objects(objects)
@@ -56,15 +69,15 @@ class system(object):
         mass_array = ephem_data.masses
         name_array = ephem_data.names
     
-        new_system = cls.from_state(state_array, mass_array, name_array)
+        new_system = cls.from_state(state_array, mass_array, name_array, *args, **kwargs)
         if verbose:
             print(new_system)
 
         return new_system
 
     @classmethod
-    def from_state(cls, state, masses, names = None):
-        new_system = cls()
+    def from_state(cls, state, masses, names = None, *args, **kwargs):
+        new_system = cls(*args, **kwargs)
         new_system.set_masses(masses)
         new_system.set_state(state)
         new_system.set_names(names)
@@ -179,6 +192,9 @@ class system(object):
             except AttributeError:
                 self.plot3d_anim = anim_plotter()
                 self.plot3d_anim.plot(positions, show = True)
+
+class railed_system(system):
+    
 
 if __name__ == "__main__":
     '''
