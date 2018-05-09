@@ -16,7 +16,7 @@ class body_differentials(integrator.differential_equation):
     #state is a nx2x3 array where state[:,0] is positions and state[:,1] is velocities
     def evaluate(self, state, constant_args = (), time = 0):
         loc, vel = system.state_to_loc_vel(state)
-        dv = self.gravity.get_acceleration(loc)
+        dv = self.gravity.get_acceleration(bodies=loc)
         dx = vel
         return system.loc_vel_to_state(dx,dv)
 
@@ -27,9 +27,9 @@ class ephemerides_rails(integrator.differential_equation):
         self.gravity = gravity.particle_rail(masses = ephemerides.masses, *args, **kwargs)
 
     def evaluate(self, state, constant_args = (), time = 0):
-        eph_locs = ephemerides.positions(time)
+        eph_locs = self.ephemerides.positions(time)
         loc, vel = system.state_to_loc_vel(state)
-        dv = self.gravity.get_acceleration(particles=loc,rails=eph_locs)
+        dv = self.gravity.get_acceleration(particles=loc,bodies=eph_locs)
         dx = vel
         return system.loc_vel_to_state(dx,dv)
 
@@ -157,11 +157,14 @@ class system(object):
         self._masses = np.concatenate([self._masses,masses])
         self._names = np.concatenate([self._names,names])
 
+    @property
+    def diff_eq(self):
+        return differential_body(self._masses,
+            max_acceleration = 1e20)
 
     def run_simulation(self, total_time, integ = None, verbose = False):
 
-        diff_eq = body_differentials(self._masses,
-            max_acceleration = 1e30)
+        diff_eq = self.diff_eq
 
         if integ is None:
             integ = integrator.rk4()
@@ -179,12 +182,14 @@ class system(object):
         positions, velocities = system.state_to_loc_vel(self._history[1])
 
         positions = np.transpose(positions, (1, 0, 2))
+        self._call_plotter(positions, rate = rate)
 
+    def _call_plotter(self, positions, rate = -1):
         if rate < 0:
             try:
                 self.plot3d.plot(positions, show = True)
             except AttributeError:
-                self.plot3d = anim_plotter()
+                self.plot3d = plotter()
                 self.plot3d.plot(positions, show = True)
         else:
             try:
@@ -194,15 +199,36 @@ class system(object):
                 self.plot3d_anim.plot(positions, show = True)
 
 class railed_system(system):
+    def __init__(self,ephemerides,*args,**kwargs):
+        super().__init__(*args,**kwargs)
+        self._ephemerides = ephemerides
     
+    @property
+    def diff_eq(self):
+        return ephemerides_rails(ephemerides = self._ephemerides,
+            max_acceleration = 1e20)
+
+    def draw(self, rate = -1):
+        positions, velocities = system.state_to_loc_vel(self._history[1])
+        times = self._history[0]
+        
+        positions = np.transpose(positions, (1, 0, 2))
+        rail_paths = self._ephemerides.path(times = times)
+        
+        draw_data = np.concatenate((positions, rail_paths), axis = 0)
+        self._call_plotter(positions = draw_data, rate = rate)
 
 if __name__ == "__main__":
-    '''
-    file_name = 'planets.csv'
-    solar_system = system.from_file(file_name, verbose = True)
-    '''
     file_name = '../Data/solarSystem.txt'
+    '''
     solar_system = system.from_ephemerides(file_name,list(range(10,1000)), verbose = False)
-    solar_system.h = 60*60*1
-    result = solar_system.run_simulation(60*60*24*2, verbose = True)
-    solar_system.draw(rate = 1)
+    '''
+    eph_data = ephemerides(file_name)
+    solar_system = railed_system.from_mass_state(
+            masses = np.array([0]),
+            locations = np.array([[1e8,1e8,1e8]]),
+            velocities = np.array([[20,10,5]]),
+            ephemerides = eph_data)
+    solar_system.h = 60*60*12
+    result = solar_system.run_simulation(60*60*24*365, verbose = False)
+    solar_system.draw(rate = -1)
