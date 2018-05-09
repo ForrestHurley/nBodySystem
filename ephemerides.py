@@ -52,7 +52,7 @@ class ephemerides(object):
         else:
             self._masses = \
                 np.array(
-                [spice.bodvrd(str(obj),"GM",1)[1] for obj in self.object_list if spice.bodfnd(obj,"GM")]
+                [spice.bodvrd(str(obj),"GM",1)[1] if spice.bodfnd(obj, "GM") else 0 for obj in self.object_list]
                 ) 
             return self._masses
 
@@ -63,7 +63,7 @@ class ephemerides(object):
         else:
             self._radii = \
                 np.array(
-                [spice.bodvrd(str(obj),"RADII",3)[1] for obj in self.object_list if spice.bodfnd(obj,"RADII")]
+                [spice.bodvrd(str(obj),"RADII",3)[1] if spice.bodfnd(obj,"RADII") else 0 for obj in self.object_list]
                 )
             return self._radii
 
