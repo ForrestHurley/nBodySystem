@@ -12,21 +12,23 @@ class plotter(object):
         self.labels = ['X', 'Y', 'Z']
         self.title = "Orbits"
 
-    def plot(self, data, show = True): #data is bodies, times, position (x y z)
+    def plot(self, data, show = True, set_axes = False): #data is bodies, times, position (x y z)
         self.data = data
         fig = plt.figure()
         ax = p3.Axes3D(fig)
 
-        self.ax_plots = []
+        self.ln_plots = []
         
         for datum in self.data:
             self._draw_plot(ax, datum)
 
-        ax.set_xlim3d(self.x_range)
+        if set_axes:
+            ax.set_xlim3d(self.x_range)
+            ax.set_ylim3d(self.y_range)
+            ax.set_zlim3d(self.z_range)
+
         ax.set_xlabel(self.labels[0])
-        ax.set_ylim3d(self.y_range)
         ax.set_ylabel(self.labels[1])
-        ax.set_zlim3d(self.z_range)
         ax.set_zlabel(self.labels[2])
 
         ax.set_title(self.title)
@@ -37,20 +39,27 @@ class plotter(object):
         return fig
 
     def _draw_plot(self, ax, datum):
-        self.ax_plots.append(ax.plot(datum[:,0],datum[:,1],datum[:,2]))
+        self.ln_plots.append(ax.plot(datum[:,0],datum[:,1],datum[:,2]))
 
 class anim_plotter(plotter):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, history = 100, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.history = history
 
     def update(self,n):
-        for body, datum in zip(self.ax_plots, self.data):
+        start = max(n - self.history, 0)
+        for body, datum in zip(self.pt_plots, self.data):
             body.set_data(datum[n][:2])
             body.set_3d_properties(datum[n][2])
-        return self.ax_plots
+        for body, datum in zip(self.ln_plots, self.data):
+            body.set_data(datum[start:n,0],datum[start:n,1])
+            body.set_3d_properties(datum[start:n,2])
+        return self.ln_plots
 
     def plot(self, data, *args, **kwargs):
         kwargs['show'] = False
+        
+        self.pt_plots = []
         fig = super().plot(data, *args, **kwargs)
 
         count = self.data.shape[1]
@@ -63,4 +72,5 @@ class anim_plotter(plotter):
         return fig
 
     def _draw_plot(self, ax, datum):
-        self.ax_plots.append(ax.plot([datum[0,0]],[datum[0,1]],[datum[0,2]],marker = 'o')[0])
+        self.pt_plots.append(ax.plot([datum[0,0]],[datum[0,1]],[datum[0,2]],marker = 'o')[0])
+        self.ln_plots.append(ax.plot([datum[0,0]],[datum[0,1]],[datum[0,2]])[0])
