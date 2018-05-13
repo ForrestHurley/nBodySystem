@@ -104,10 +104,10 @@ class basic_evolution(object):
         return sorted_scores
 
     def get_best_score(self):
-        pass
+        return max(self.get_pop_scores())
 
     def get_average_score(self):
-        pass
+        return sum(self.get_pop_scores()) / float(len(self.indiv_list))
 
     def preserve_n_best(self, p = 0.1):
         sorted_scores = self.get_sorted_scores()
