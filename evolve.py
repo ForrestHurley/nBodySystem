@@ -9,6 +9,7 @@ class individual(object):
         else:
             self.data_shape = data.shape[1:]
         self.data = data
+        self.std_dev = 1
 
     @classmethod
     def random(cls):
@@ -19,7 +20,10 @@ class individual(object):
     def generate_random_column(self):
         return np.random.rand(self.data_shape)
 
-    def mutate_vals(self, std_dev = 1, proportion = 0.1):
+    def mutate_vals(self, std_dev = None, p = 0.1):
+        if std_dev is None:
+            std_dev = self.std_dev
+
         changes = np.random.rand(len(self.data)) < proportion
         deltas = ( np.random.standard_normal(size=self.data_shape)*std_dev for elem in self.data )
         
@@ -60,6 +64,11 @@ class basic_evolution(object):
         else:
             self.eval_func = eval_func
 
+        self.keep_proportion = 0.4
+        self.indiv_mutate_proportion = 0.1
+        self.gene_mutate_proportion = 0.3
+        self.add_remove_gene_proportion = 0.1
+
     def reset_evolution(self):
         self.indiv_list = []
         self.score_list = []
@@ -75,9 +84,10 @@ class basic_evolution(object):
                 self.best_score(),
                 self.average_score()])
 
-            self.preserve_random_best()
-            self.mate_random()
-            self.mutate_random()
+            self.preserve_random_best( p = self.keep_proportion )
+            self.mate_random( n = pop_size - len(self.indiv_list) )
+            self.add_remove_random_genes( p = self.add_remove_gene_proportion )
+            self.mutate_random( p = self.indiv_mutate_proportion )
 
             self.total_generations += 1
 
@@ -141,7 +151,7 @@ class basic_evolution(object):
 
         for indiv, mut_bool in zip(self.indiv_list, mutate):
             if mut_bool:
-                indiv.mutate()
+                indiv.mutate( p = self.gene_mutate_proportion )
 
     def add_remove_random_genes(self, p = 0.1):
         add = np.random.rand(len(self.indiv_list)) < p
