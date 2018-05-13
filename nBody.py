@@ -42,6 +42,7 @@ class system(object):
         self._names = np.array([])
         self._history = []
         self.h = 0.1
+        self.default_integ = integrator.rk4()
 
     @classmethod
     def from_mass_state(cls, masses, locations, velocities, *args, **kwargs):
@@ -167,7 +168,7 @@ class system(object):
         diff_eq = self.diff_eq
 
         if integ is None:
-            integ = integrator.rk4()
+            integ = self.default_integ
         integ.diff_eq = diff_eq
         integ.h = self.h
         integ.steps = int(total_time / self.h)
@@ -202,7 +203,13 @@ class railed_system(system):
     def __init__(self,ephemerides,*args,**kwargs):
         super().__init__(*args,**kwargs)
         self._ephemerides = ephemerides
-    
+        self.default_integ = integrator.bulirsch_stoer(
+            initial_substeps = 2,
+            max_substeps = 100,
+            ignore_overruns = True,
+            error_tolerance = 1e-3,
+            verbose = True)
+        self.default_integ = integrator.adams_moulton4()
     @property
     def diff_eq(self):
         return ephemerides_rails(ephemerides = self._ephemerides,
@@ -220,15 +227,13 @@ class railed_system(system):
 
 if __name__ == "__main__":
     file_name = '../Data/solarSystem.txt'
-    '''
-    solar_system = system.from_ephemerides(file_name,list(range(10,1000)), verbose = False)
-    '''
-    eph_data = ephemerides(file_name)
+    eph_data = ephemerides.LimitObjects(file_name,range(10,2000))
     solar_system = railed_system.from_mass_state(
-            masses = np.array([0]),
-            locations = np.array([[1e8,1e8,1e8]]),
-            velocities = np.array([[20,10,5]]),
+            masses = np.array([0]*100),
+            locations = np.array([[1e8,1e8,1e8]]*100),
+            velocities = np.array([[20,10,5]]*100),
             ephemerides = eph_data)
-    solar_system.h = 60*60*12
+    solar_system.h = 60*60*6
     result = solar_system.run_simulation(60*60*24*365, verbose = False)
+    print("Finished")
     solar_system.draw(rate = -1)

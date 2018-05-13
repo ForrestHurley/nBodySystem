@@ -3,8 +3,8 @@ from lagrange import lagrange
 import sys
 
 class differential_equation(object):
-    def __call__(self, state, const_args = (), time = 0):
-        return self.evaluate(state, const_args, time = time)
+    def __call__(self, state, diff_eq_args = (), time = 0):
+        return self.evaluate(state, diff_eq_args, time = time)
 
     def evaluate(self, state, const_args = (), time = 0):
         return np.zeros(state.shape)
@@ -17,15 +17,18 @@ class integrator(object):
         self.verbose = verbose
 
     def integrate(self, state, save_steps = False, initial_time = 0, diff_eq_args = ()):
+        self.discrete_index = 0
         if self.verbose:
             print("Starting integration")
         if save_steps:
             state_list = []
             time_list = []
         for i in range(self.steps):
-            state = self.step(state = state, 
-                        time = initial_time + i * self.h, 
+            step_time = initial_time + i * self.h
+            state = self.general_step(state = state, 
+                        time = step_time, 
                         diff_eq_args = diff_eq_args)
+
             state_list.append(state)
             time_list.append(initial_time + i * self.h)
             if self.verbose:
@@ -37,18 +40,37 @@ class integrator(object):
             return state_list, time_list
         return state
 
+    def general_step(self,*args,**kwargs):
+        return self.step(*args, **kwargs)
+
     def step(self, state, time = 0, diff_eq_args = ()):
         pass
 
-class euler(integrator):
+class event_integrator(integrator):
+    def __init__(self, discrete_events = np.array([]), *args, **kwargs):
+        super().__init__(*args,**kwargs)
+        self.discrete_events = discrete_events
+        self.discrete_index = 0
+
+    def general_step(self,time = 0,*args,**kwargs):
+        new_state = self.step(time = time, *args, **kwargs)
+
+        if self.discrete_events.shape[0] > self.discrete_index + 1:
+            if time > self.discrete_events[self.discrete_index,0]:
+                new_state += self.discrete_events[self.discrete_index,1:]
+                self.discrete_index += 1
+        
+        return new_state
+
+class euler(event_integrator):
     def step(self, state, time = 0, diff_eq_args = ()):
         rates = self.diff_eq(state, diff_eq_args, time = time)
         return state + rates * self.h
 
-class trapezoidal(integrator):
+class trapezoidal(event_integrator):
     pass
 
-class rk2(integrator):
+class rk2(event_integrator):
     def step(self, state, time = 0, diff_eq_args = ()):
         k1 = self.h * self.diff_eq(state, *diff_eq_args, time = time)
         k2 = self.h * self.diff_eq(state + k1,
@@ -56,7 +78,7 @@ class rk2(integrator):
                                 time = time + self.h)
         return state + ( (k1 + k2) / 2 )
 
-class rk3(integrator):
+class rk3(event_integrator):
     def step(self, state, time = 0, diff_eq_args = ()):
         k1 = self.h * self.diff_eq(state, *diff_eq_args, time = time)
         k2 = self.h * self.diff_eq(state + 0.5 * k1,
@@ -67,9 +89,9 @@ class rk3(integrator):
                                 time = time + self.h)
         return state + ( (k1 + 4 * k2 + k3) / 6 )
 
-class rk4(integrator):
+class rk4(event_integrator):
     def step(self, state, time = 0, diff_eq_args = ()):
-        k1 = self.h * self.diff_eq(state, *diff_eq_args, time = time)
+        k1 = self.h * self.diff_eq(state, diff_eq_args, time = time)
         k2 = self.h * self.diff_eq(state + 0.5 * k1,
                                 diff_eq_args,
                                 time = time + 0.5 * self.h)
@@ -81,7 +103,55 @@ class rk4(integrator):
                                 time = time + self.h)
         return state + ( (k1 + 2 * k2 + 2 * k3 + k4) / 6 )
 
-class modified_midpoint(integrator):
+class adams_bashforth4(rk4):
+    def integrate(self, state, initial_time = 0, diff_eq_args = (), *args, **kwargs):
+        
+        self.diff_list = [self.diff_eq(
+            state = state, time = initial_time, diff_eq_args = diff_eq_args)]
+
+        for i in range(3):
+            state = super().step(
+                    state = state,
+                    time = initial_time + i * self.h,
+                    diff_eq_args = diff_eq_args)
+
+            self.diff_list.append(self.diff_eq(
+                state = state,
+                time = initial_time + i * self.h,
+                diff_eq_args = diff_eq_args))
+
+        state = super().integrate(state,
+            initial_time = initial_time + 4 * self.h,
+            diff_eq_args = diff_eq_args,
+            *args, **kwargs)
+
+        return state
+
+    def step(self, state, time = 0, diff_eq_args = ()):
+            del self.diff_list[0]
+            self.diff_list.append(self.diff_eq(
+                state = state, time = time, diff_eq_args = diff_eq_args))
+
+            return state \
+                + self.h / 24 * ( 55 * self.diff_list[-1] \
+                - 59 * self.diff_list[-2] + 37 * self.diff_list[-3] \
+                - 9 * self.diff_list[-4])
+
+class adams_moulton4(adams_bashforth4):
+    def step(self, state, time = 0, diff_eq_args = ()):
+        next_state = super().step(
+            state = state,
+            time = time,
+            diff_eq_args = diff_eq_args)
+
+        new_diff = self.diff_eq(next_state, diff_eq_args, time = time + self.h)
+
+        adjusted_state = state + self.h / 24. * (
+            9. * new_diff + 19 * self.diff_list[-1] - 5 * self.diff_list[-2] + self.diff_list[-3] )
+
+        return adjusted_state
+
+class modified_midpoint(event_integrator):
     def __init__(self, max_substeps = 30, *args, **kwargs):
         super().__init__(*args, **kwargs)
         if max_substeps < 1:
@@ -159,8 +229,10 @@ class test_equation(differential_equation):
 if __name__ == "__main__":
     equation = test_equation()
 
-    integ = bulirsch_stoer(max_substeps = 100, diff_eq = equation, h = 0.03, steps = 200)
-    results, times = integ.integrate(state = np.array([1,3]),save_steps = True,initial_time = 0)
+    integ = adams_moulton4(diff_eq = equation, h = 0.3, steps = 10)
+    #integ = modified_midpoint(max_substeps = 5, diff_eq = equation, h = 0.03, steps = 100)
+    #integ = bulirsch_stoer(max_substeps = 100, diff_eq = equation, ignore_overruns = True, h = 0.03, steps = 100)
+    results, times = integ.integrate(state = np.array([1, 3]),save_steps = True,initial_time = 0)
     from matplotlib import pyplot as plt
     plt.plot(times, np.array(results))
     plt.show()

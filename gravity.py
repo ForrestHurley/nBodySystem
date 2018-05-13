@@ -27,7 +27,7 @@ class gravity(object):
 class particle_particle(gravity):
     def two_body_acc(self, posA, posB, massA):
             direction = posA - posB 
-            distance = np.linalg.norm(direction, axis = -1)
+            distance = np.expand_dims(np.linalg.norm(direction, axis = -1),-1)
             norm_dir = direction / distance
             return (self.G * massA / (distance * distance)) * norm_dir
         
@@ -43,12 +43,17 @@ class particle_particle(gravity):
 
 class particle_rail(particle_particle):
     def _get_acceleration(self, bodies, particles):
-        body_rail_iteration = product(zip(self.masses, bodies), zip(particles, range(particles.shape[0])))
+        body_rail_iteration = np.array(list(product(range(bodies.shape[0]), range(particles.shape[0]))))
 
+        masses = np.expand_dims(self.masses[body_rail_iteration[:,0]],-1)
+        big_pos = bodies[body_rail_iteration[:,0]]
+        small_pos = particles[body_rail_iteration[:,1]]
+
+        raw_accelerations = self.two_body_acc(big_pos, small_pos, masses)
         accelerations = np.zeros(particles.shape)
-
-        for (mass, big_body_pos), (small_body_pos, idx) in body_rail_iteration:
-            accelerations[idx] += self.two_body_acc(big_body_pos, small_body_pos, mass)
+        
+        for raw_acc, idx in zip(raw_accelerations, body_rail_iteration[:,1]):
+            accelerations[idx] += raw_acc
 
         return accelerations
 
