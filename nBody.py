@@ -205,15 +205,8 @@ class railed_system(system):
     def __init__(self,ephemerides,*args,**kwargs):
         super().__init__(*args,**kwargs)
         self._ephemerides = ephemerides
-        self.default_integ = integrator.bulirsch_stoer(
-            initial_substeps = 2,
-            max_substeps = 100,
-            ignore_overruns = True,
-            error_tolerance = 1e-3,
-            verbose = True)
+        self.default_integ = integrator.adams_moulton4()
 
-        discrete_test = [[90000, np.array([[[0,0,0],[0,0,0]],[[0,0,0],[0,0,10]]])]] 
-        self.default_integ = integrator.adams_moulton4(discrete_events = discrete_test)
     @property
     def diff_eq(self):
         return ephemerides_rails(ephemerides = self._ephemerides,
@@ -229,13 +222,24 @@ class railed_system(system):
         draw_data = np.concatenate((positions, rail_paths), axis = 0)
         self._call_plotter(positions = draw_data, rate = rate)
 
+def rocket_system(railed_system):
+    def __init__(self, ephemerides, start_time = None, rocket_count = 1, rocket_states = None, *args, **kwargs):
+        if not rocket_states is None:
+            rocket_count = rocket_states.shape[0]
+        else:
+            rocket_states = np.array([ephemerides.object_state(399,start_time)]*rocket_count)
+        super().__init__(masses = np.array([0]*rocket_count), *args, **kwargs)
+
+    def run_simulation(self, *args, **kwargs):
+        pass
+
 if __name__ == "__main__":
     file_name = '../Data/solarSystem.txt'
     eph_data = ephemerides.LimitObjects(file_name,range(10,2000))
     solar_system = railed_system.from_mass_state(
-            masses = np.array([0]*2),
-            locations = np.array([[1e8,1e8,1e8]]*2),
-            velocities = np.array([[20,10,5]]*2),
+            masses = np.array([0]*1000),
+            locations = np.array([[1e8,1e8,1e8]]*1000),
+            velocities = np.array([[20,10,5]]*1000),
             ephemerides = eph_data)
     solar_system.h = 60*60*6
     result = solar_system.run_simulation(60*60*24*365, verbose = True)

@@ -85,6 +85,12 @@ class ephemerides(object):
             dtype='float') 
         return np.reshape(state_array,(-1,2,3))
 
+    def object_state(self, obj, time):
+        if obj in self.object_list:
+            return spice.spkezr(str(obj), time, 'J2000', 'NONE', '0')[0]
+        else:
+            return None
+
     def velocities(self, time):
         state = self.state(time)
         return state[:,1]
