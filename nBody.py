@@ -174,7 +174,9 @@ class system(object):
         integ.steps = int(total_time / self.h)
         integ.verbose = verbose
 
-        results, times = integ.integrate(state = self.get_state(), save_steps = True, initial_time = 0) 
+
+        results, times = integ.integrate(state = self.get_state(),
+            save_steps = True, initial_time = 0) 
 
         self._history = [times, np.array(results)]
         return self._history
@@ -209,7 +211,9 @@ class railed_system(system):
             ignore_overruns = True,
             error_tolerance = 1e-3,
             verbose = True)
-        self.default_integ = integrator.adams_moulton4()
+
+        discrete_test = [[90000, np.array([[[0,0,0],[0,0,0]],[[0,0,0],[0,0,10]]])]] 
+        self.default_integ = integrator.adams_moulton4(discrete_events = discrete_test)
     @property
     def diff_eq(self):
         return ephemerides_rails(ephemerides = self._ephemerides,
@@ -229,11 +233,10 @@ if __name__ == "__main__":
     file_name = '../Data/solarSystem.txt'
     eph_data = ephemerides.LimitObjects(file_name,range(10,2000))
     solar_system = railed_system.from_mass_state(
-            masses = np.array([0]*100),
-            locations = np.array([[1e8,1e8,1e8]]*100),
-            velocities = np.array([[20,10,5]]*100),
+            masses = np.array([0]*2),
+            locations = np.array([[1e8,1e8,1e8]]*2),
+            velocities = np.array([[20,10,5]]*2),
             ephemerides = eph_data)
     solar_system.h = 60*60*6
-    result = solar_system.run_simulation(60*60*24*365, verbose = False)
-    print("Finished")
+    result = solar_system.run_simulation(60*60*24*365, verbose = True)
     solar_system.draw(rate = -1)

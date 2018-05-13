@@ -17,7 +17,6 @@ class integrator(object):
         self.verbose = verbose
 
     def integrate(self, state, save_steps = False, initial_time = 0, diff_eq_args = ()):
-        self.discrete_index = 0
         if self.verbose:
             print("Starting integration")
         if save_steps:
@@ -47,19 +46,24 @@ class integrator(object):
         pass
 
 class event_integrator(integrator):
-    def __init__(self, discrete_events = np.array([]), *args, **kwargs):
+    def __init__(self, discrete_events = [], *args, **kwargs):
         super().__init__(*args,**kwargs)
         self.discrete_events = discrete_events
+
+    def integrate(self, *args, **kwargs):
         self.discrete_index = 0
+        return super().integrate(*args, **kwargs)
 
     def general_step(self,time = 0,*args,**kwargs):
         new_state = self.step(time = time, *args, **kwargs)
 
-        if self.discrete_events.shape[0] > self.discrete_index + 1:
-            if time > self.discrete_events[self.discrete_index,0]:
-                new_state += self.discrete_events[self.discrete_index,1:]
+        if len(self.discrete_events) > self.discrete_index:
+            print(time)
+            if time > self.discrete_events[self.discrete_index][0]:
+                new_state += self.discrete_events[self.discrete_index][1]
                 self.discrete_index += 1
         
+                print("Activated")
         return new_state
 
 class euler(event_integrator):
