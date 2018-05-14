@@ -1,30 +1,38 @@
 import numpy as np
 import random
+import sys
 
 class individual(object):
     def __init__(self, data = None, data_shape = (1,)):
         self.score = None
         if data is None:
             self.data_shape = data_shape
+            self.data = []
+        elif len(data) < 1:
+            self.data_shape = data_shape
+            self.data = data
         else:
-            self.data_shape = data.shape[1:]
-        self.data = data
+            self.data_shape = data[0].shape
+            self.data = data
         self.std_dev = 1
 
     @classmethod
     def random(cls):
-        new_indiv = cls(value)
+        new_indiv = cls()
         new_indiv.add_random_column()
         return new_indiv
 
+    def __str__(self):
+        return "Genes: {}".format(str(self.data))
+
     def generate_random_column(self):
-        return np.random.rand(self.data_shape)
+        return np.random.rand(*self.data_shape)
 
     def mutate_vals(self, std_dev = None, p = 0.1):
         if std_dev is None:
             std_dev = self.std_dev
 
-        changes = np.random.rand(len(self.data)) < proportion
+        changes = np.random.rand(len(self.data)) < p
         deltas = ( np.random.standard_normal(size=self.data_shape)*std_dev for elem in self.data )
         
         self.data = [elem + delta if change else elem for elem, delta, change in
@@ -47,49 +55,72 @@ class individual(object):
         new_self = [ slf for slf, take in zip(self.data, rand_self) if take ]
         new_other = [ oth for oth, take in zip(other.data, rand_other) if take ]
 
-        return random.shuffle(new_self + new_other)
+        child_data = new_self + new_other
+        random.shuffle(child_data)
+        child = individual(data = child_data, data_shape = self.data_shape)
+        return child
 
     def __add__(self,x):
         return self.mate(x)
 
 class basic_evaluation(object):
     def __call__(self, indiv_list):
-        return [np.sum(indiv) for indiv in indiv_list]
+        return [self.evaluation(indiv) for indiv in indiv_list]
+    def evaluation(self, individual):
+        return sum(np.sum(gene) for gene in individual.data)
 
 class basic_evolution(object):
-    def __init__(self, eval_func = None):
-        self.reset_evolution()
+    def __init__(self, eval_func = None, individual_class = None, pop_size = 100):
+
         if eval_func is None:
             self.eval_func = basic_evaluation()
         else:
             self.eval_func = eval_func
+        if individual_class is None:
+            self.indiv = individual
+        else:
+            self.indiv = individual_class
 
         self.keep_proportion = 0.4
         self.indiv_mutate_proportion = 0.1
         self.gene_mutate_proportion = 0.3
         self.add_remove_gene_proportion = 0.1
+        self.topn = int(pop_size * 0.5)
+
+        self.pop_size = pop_size
+
+        self.reset_evolution()
 
     def reset_evolution(self):
-        self.indiv_list = []
+        self.initialize_pop(size = self.pop_size)
         self.score_list = []
         self.total_generations = 0
 
-    def run_evolution(self, generations = 100, pop_size = 100):
-        if self.indiv_list == []:
-            self.initialize_pop(size = pop_size)
+    def initialize_pop(self, size = 100):
+        self.indiv_list = [ self.indiv.random() for i in range(size) ]
+
+    def run_evolution(self, generations = 100, verbose = False):
 
         for i in range(generations):
+            if verbose:
+                sys.stdout.write("\033[K")
+                print("Started generation {}".format(self.total_generations), end = "\r")
+                sys.stdout.flush()
 
             self.score_list.append([
-                self.best_score(),
-                self.average_score()])
+                self.get_best_score(),
+                self.get_average_topn_score(n = self.topn),
+                self.get_average_score()])
 
             self.preserve_random_best( p = self.keep_proportion )
-            self.mate_random( n = pop_size - len(self.indiv_list) )
+            self.mate_random( n = self.pop_size - len(self.indiv_list) )
             self.add_remove_random_genes( p = self.add_remove_gene_proportion )
             self.mutate_random( p = self.indiv_mutate_proportion )
 
             self.total_generations += 1
+
+        if verbose:
+            print("")
 
         return self.score_list[-1]
 
@@ -98,38 +129,65 @@ class basic_evolution(object):
             zip(range(len(self.indiv_list)),self.indiv_list)
             if indiv.score is None)
 
-        ids, indivs = zip(*need_scores)
+        try:
+            ids, indivs = zip(*need_scores)
 
-        scores = self.eval_func(indivs)
-        
-        for indiv_id, indiv_score in zip(ids, scores):
-            self.indiv_list[indiv_id].score = indiv_score
+            scores = self.eval_func(indivs)
+            
+            for indiv_id, indiv_score in zip(ids, scores):
+                self.indiv_list[indiv_id].score = indiv_score
+        except ValueError:
+            pass
 
         out_scores = [indiv.score for indiv in self.indiv_list]
+        #print(out_scores)
         return out_scores
 
     def get_sorted_scores(self):
-        score_ids = zip(self.get_pop_scores(),range(len(self.indiv_list))
-        sorted_scores = sorted(score_ids, key = lambda x : x[0], reverse = True)
+        score_ids = zip(self.get_pop_scores(),range(len(self.indiv_list)))
+        sorted_scores = sorted(score_ids, key = lambda x : x[0])
         return sorted_scores
 
     def get_best_score(self):
         return max(self.get_pop_scores())
 
     def get_average_score(self):
-        return sum(self.get_pop_scores()) / float(len(self.indiv_list))
-
+        mean = sum(self.get_pop_scores()) / float(len(self.indiv_list))
+        return mean
+   
+    def get_average_topn_score(self, n = 50):
+        sorted_scores = self.get_sorted_scores()
+        best_scores = [ elem[0] for elem in sorted_scores[n:] ]
+        return sum(best_scores) / float(len(best_scores))
+ 
     def preserve_n_best(self, p = 0.1):
         sorted_scores = self.get_sorted_scores()
         n = int(p * len(sorted_scores))
 
-        worst_elems = (elem[1] for elem in sorted_scores[n:])
+        worst_elems = (elem[1] for elem in sorted_scores[:n])
 
-        for elem in worst_elems:
+        for elem in sorted(worst_elems, reverse = True):
             del self.indiv_list[elem]
-       
+      
+    def get_n_best(self, n = 5):
+        sorted_scores = self.get_sorted_scores()
+
+        best_elems = (elem for elem in sorted_scores[-n:])
+
+        out_indivs = []
+        for elem in best_elems:
+            out_indivs.append([self.indiv_list[elem[1]], elem[0]])
+
+        return out_indivs
+
+    def __str__(self):
+        best = self.get_n_best(n = 5)
+
+        text_list = [str(elem[0]) + "\tScore: " + str(elem[1]) for elem in best]
+        return "\n".join(text_list)
+ 
     #Only currently works for p <= 0.5 
-    def preserve_random_best(self, p = 0.1) #, weight = lambda x : x):
+    def preserve_random_best(self, p = 0.1): #, weight = lambda x : x):
         sorted_scores = self.get_sorted_scores()
 
         #TODO: support non-linear weighting based on scores
@@ -139,11 +197,15 @@ class basic_evolution(object):
         loc = np.arange(len(sorted_scores)) / float(len(sorted_scores))
         probs = p * loc * 2
 
-        remove = np.random.rand(probs.shape) > probs
+        remove = np.random.rand(*probs.shape) > probs
         
+        if len(self.indiv_list) - np.sum(remove) < 2:
+            self.preserve_n_best(p = p)
+            return
+
         worst_elems = (idx for (score, idx), removal in zip(sorted_scores,remove) if removal)
 
-        for elem in worst_elems:
+        for elem in sorted(worst_elems, reverse = True):
             del self.indiv_list[elem]
 
     def mutate_random(self, p = 0.1):
@@ -151,7 +213,8 @@ class basic_evolution(object):
 
         for indiv, mut_bool in zip(self.indiv_list, mutate):
             if mut_bool:
-                indiv.mutate( p = self.gene_mutate_proportion )
+                indiv.mutate_vals( p = self.gene_mutate_proportion )
+                indiv.score = None
 
     def add_remove_random_genes(self, p = 0.1):
         add = np.random.rand(len(self.indiv_list)) < p
@@ -162,6 +225,9 @@ class basic_evolution(object):
                 indiv.add_random_column()
             if rem_bool:
                 indiv.remove_random_column()
+            if add_bool or rem_bool:
+                indiv.score = None
+
 
     def mate_random(self, n = 90):
         pairs = []
@@ -173,4 +239,31 @@ class basic_evolution(object):
         self.indiv_list += new_indivs
 
 if __name__ == "__main__":
-    pass
+    class test_func(basic_evaluation):
+        def evaluation(self, individual):
+            if len(individual.data) > 0:
+                return np.sum(np.sin(individual.data[0]**2)-np.exp(individual.data[0]**-1)) - len(individual.data)**2 + 10 * len(individual.data) + 1
+            else:
+                return -10
+
+    eval_func = test_func()
+    indiv_class = individual
+    evo_environment = basic_evolution(
+        eval_func = eval_func,
+        individual_class = indiv_class,
+        pop_size = 25)
+    evo_environment.keep_proportion = 0.4
+    evo_environment.indiv_mutate_proportion = 0.5
+    evo_environment.gene_mutate_proportion = 1
+    evo_environment.add_remove_gene_proportion = 0.002
+    
+    evo_environment.run_evolution(generations = 20, verbose = True)
+    scores = np.array(evo_environment.score_list)
+
+    print(evo_environment)
+
+    from matplotlib import pyplot as plt
+    plt.plot(scores[:,0],label="Top Score")
+    plt.plot(scores[:,1],label="Average Score of Top 50%")
+    plt.legend()
+    plt.show()
