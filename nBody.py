@@ -223,11 +223,11 @@ class railed_system(system):
         self._call_plotter(positions = draw_data, rate = rate)
 
 def rocket_system(railed_system):
-    def __init__(self, ephemerides, start_time = None, rocket_count = 1, rocket_states = None, *args, **kwargs):
+    def __init__(self, ephemerides, start_time = None, rocket_count = 1, rocket_states = None, rocket_body = 399, *args, **kwargs):
         if not rocket_states is None:
             rocket_count = rocket_states.shape[0]
         else:
-            rocket_states = np.array([ephemerides.object_state(399,start_time)]*rocket_count)
+            rocket_states = np.array([ephemerides.object_state(rocket_body,start_time)]*rocket_count)
         super().__init__(masses = np.array([0]*rocket_count), *args, **kwargs)
 
     def run_simulation(self, *args, **kwargs):

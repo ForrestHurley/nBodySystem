@@ -29,7 +29,11 @@ class particle_particle(gravity):
             direction = posA - posB 
             distance = np.expand_dims(np.linalg.norm(direction, axis = -1),-1)
             norm_dir = direction / distance
-            return (self.G * massA / (distance * distance)) * norm_dir
+            raw_acc = (self.G * massA / (distance * distance)) * norm_dir
+            if np.all(np.isfinite(raw_acc)):
+                return raw_acc
+            else:
+                return 0
         
     def _get_acceleration(self, bodies):
         body_iteration = permutations(zip(self.masses, bodies, range(self.masses.shape[0])),2)

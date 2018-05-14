@@ -17,8 +17,8 @@ class individual(object):
         self.std_dev = 1
 
     @classmethod
-    def random(cls):
-        new_indiv = cls()
+    def random(cls, *args, **kwargs):
+        new_indiv = cls(*args, **kwargs)
         new_indiv.add_random_column()
         return new_indiv
 
@@ -28,15 +28,16 @@ class individual(object):
     def generate_random_column(self):
         return np.random.rand(*self.data_shape)
 
-    def mutate_vals(self, std_dev = None, p = 0.1):
-        if std_dev is None:
-            std_dev = self.std_dev
+    def mutate_vals(self, p = 0.1):
 
         changes = np.random.rand(len(self.data)) < p
-        deltas = ( np.random.standard_normal(size=self.data_shape)*std_dev for elem in self.data )
+        muted_columns = ( self.mutate_col(elem) for elem in self.data )
         
-        self.data = [elem + delta if change else elem for elem, delta, change in
-            zip(self.data, deltas, changes)]
+        self.data = [mut if change else elem for elem, mut, change in
+            zip(self.data, muted_columns, changes)]
+
+    def mutate_col(self, column):
+        return column + np.random.standard_normal(size = self.data_shape)*self.std_dev
 
     def add_random_column(self):
         random_col = self.generate_random_column()
@@ -56,9 +57,12 @@ class individual(object):
         new_other = [ oth for oth, take in zip(other.data, rand_other) if take ]
 
         child_data = new_self + new_other
-        random.shuffle(child_data)
         child = individual(data = child_data, data_shape = self.data_shape)
+        child.organize_genes()
         return child
+
+    def organize_genes(self):
+        random.shuffle(self.data)
 
     def __add__(self,x):
         return self.mate(x)
