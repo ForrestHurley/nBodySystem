@@ -33,6 +33,7 @@ class ephemerides(object):
     def limit_objects(self,objects):
         self._nullify_derived()
         self._object_list = np.intersect1d(self.object_list,objects)
+        del self._object_set
 
     @property
     def object_list(self):
@@ -44,6 +45,16 @@ class ephemerides(object):
             self._object_list = np.array(list(set(itertools.chain.from_iterable(object_generator))))
 
             return self._object_list
+
+    @property
+    def object_set(self):
+        try:
+            return self._object_set
+        except AttributeError:
+            
+            self._object_set = set(self.object_list)
+
+            return self._object_set
 
     @property
     def masses(self):
@@ -86,8 +97,14 @@ class ephemerides(object):
         return np.reshape(state_array,(-1,2,3))
 
     def object_state(self, obj, time):
-        if obj in self.object_list:
+        if obj in self.object_set:
             return spice.spkezr(str(obj), time, 'J2000', 'NONE', '0')[0]
+        else:
+            return None
+
+    def object_position(self, obj, time):
+        if obj in self.object_set:
+            return spice.spkpos(str(obj), time, 'J2000', 'NONE', '0')[0]
         else:
             return None
 
@@ -95,8 +112,7 @@ class ephemerides(object):
         state = self.state(time)
         return state[:,1]
 
-    def path(self, times = None, years = 10, steps = 1000):
-        delta_time = years * 60 * 60 * 24 * 365.25
+    def path(self, times = None, delta_time = 60 * 60 * 24 * 365.25, steps = 1000):
         if times is None:
             current_time = time.time()
             times = np.linspace(
@@ -106,6 +122,21 @@ class ephemerides(object):
         position_array = np.array([self.positions(timestamp) for timestamp in times])
         path = np.transpose(position_array,(1,0,2))
         return path
+
+    def object_paths(self, objects = None, times = None, delta_time = 60 * 60 * 24 * 365.25, steps = 1000):
+        if times is None:
+            current_time = time.time()
+            times = np.linspace(
+                start = current_time,
+                stop = current_time + delta_time,
+                num = steps)
+        if objects is None:
+            return np.array([])
+
+        position_array = np.array(
+            [[self.object_position(obj, timestamp) for timestamp in times] for obj in objects])
+
+        return position_array
 
 if __name__ == "__main__":
     from plot import plotter, anim_plotter

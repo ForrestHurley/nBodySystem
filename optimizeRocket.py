@@ -1,5 +1,5 @@
 import evolve
-from evaluatePath import path_evaluator
+from evaluatePath import path_evaluator, body_value, distance_threshold
 import ephemerides
 from nBody import rocket_system
 import plot
@@ -35,10 +35,14 @@ def rocket_indiv(evolve.individual):
         self.data.sort(key = lambda x : x[0])
 
 def rocket_eval(evolve.basic_evaluation):
-    def __init__(self, total_sim_time = 60*60*24*365.25*2, *args, **kwargs):
-        self._rocket_simulation = nBody.rocket_system(*args, **kwargs)
+    def __init__(self, ephemerides, value_list = None, total_sim_time = 60*60*24*365.25*2, *args, **kwargs):
+        self._rocket_simulation = nBody.rocket_system(ephemerides = ephemerides, *args, **kwargs)
         self.sim_time = total_sim_time
-        self.path_eval = path_evaluator()
+        
+        if value_list is None:
+            value_list = [body_value(body = 599, value = 100)]
+
+        self.path_eval = path_evaluator(ephemerides = ephemerides, value_list = value_list)
 
     def __call__(self, individual_list):
         times, locations = self._rocket_simulation.run_simulation(

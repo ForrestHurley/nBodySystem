@@ -254,7 +254,7 @@ def rocket_system(railed_system):
 
         n_steps = math.ciel(time_range / self.h)
 
-        delta_world = [np.zeros(shape = (3 * len(delta_list)), dtype = 'float')]*n_steps
+        delta_world = [np.zeros(shape = (len(delta_list),6), dtype = 'float')]*n_steps
 
         times = np.arange(n_steps) * self.h + min_time
 
@@ -262,8 +262,7 @@ def rocket_system(railed_system):
             for delta in rocket:
                 index = floor((delta[0] - min_time) / self.h)
 
-                delta_world[index][( rocket_index * 3 ):( 3 + rocket_index * 3)]\
-                    += delta[1:]
+                delta_world[index][rocket_index,3:] += delta[1:]
 
         return list(zip(times, delta_world))
 
