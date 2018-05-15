@@ -58,7 +58,6 @@ class event_integrator(integrator):
         new_state = self.step(time = time, *args, **kwargs)
 
         if len(self.discrete_events) > self.discrete_index:
-            print(time)
             if time > self.discrete_events[self.discrete_index][0]:
                 new_state += self.discrete_events[self.discrete_index][1]
                 self.discrete_index += 1

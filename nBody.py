@@ -5,6 +5,7 @@ from ephemerides import ephemerides
 import csv
 import time
 from plot import plotter, anim_plotter
+import math
 
 class body_differentials(integrator.differential_equation):
     def __init__(self, masses, *args, **kwargs):
@@ -237,10 +238,52 @@ def rocket_system(railed_system):
             rocket_count = rocket_states.shape[0]
         else:
             rocket_states = np.array([ephemerides.object_state(rocket_body,start_time)]*rocket_count)
-        super().__init__(masses = np.array([0]*rocket_count), *args, **kwargs)
+        super().__init__(
+            masses = np.array([0]*rocket_count),
+            start_time = start_time,
+            *args, **kwargs)
+
+        self.set_state(rocket_states)
+
+    def rocket_delta_list_to_world(self, delta_list = None):
+        times = [ delta[0] for delta in rocket for rocket in delta_list ]
+
+        min_time = min(times)
+        max_time = max(times)
+        time_range = max_time - min_time
+
+        n_steps = math.ciel(time_range / self.h)
+
+        delta_world = [np.zeros(shape = (3 * len(delta_list)), dtype = 'float')]*n_steps
+
+        times = np.arange(n_steps) * self.h + min_time
+
+        for rocket, rocket_index in zip(delta_list, range(len(delta_list))):
+            for delta in rocket:
+                index = floor((delta[0] - min_time) / self.h)
+
+                delta_world[index][( rocket_index * 3 ):( 3 + rocket_index * 3)]\
+                    += delta[1:]
+
+        return list(zip(times, delta_world))
 
     def run_simulation(self, rocket_delta_vs = None, *args, **kwargs):
-        pass
+
+        integ = self.default_integ
+        integ.diff_eq = ephemerides_rails()
+        integ.h = self.h
+        integ.steps = int(total_time / self.h)
+        integ.verbose = verbose
+    
+        integ.discrete_events = self.delta_v_list_to_array(rocket_delta_vs)
+
+        results, times = integ.integrate(
+            state = self.get_state(),
+            save_steps = True,
+            initial_time = self.start_time) 
+
+        self._history = [times, np.array(results)]
+        return self._history
 
 if __name__ == "__main__":
     file_name = '../Data/solarSystem.txt'
