@@ -34,15 +34,19 @@ class ephemerides_rails(integrator.differential_equation):
         return system.loc_vel_to_state(dx,dv)
 
 class system(object):
-    def __init__(self):
+    def __init__(self, start_time = None, h = 0.1):
         self.gravity = gravity.particle_particle
         self._locations = None
         self._masses = np.array([])
         self._velocities = None
         self._names = np.array([])
         self._history = []
-        self.h = 0.1
+        self.h = h
         self.default_integ = integrator.rk4()
+        if start_time is None:
+            self.start_time = float(time.time())
+        else:
+            self.start_time = start_time
 
     @classmethod
     def from_mass_state(cls, masses, locations, velocities, *args, **kwargs):
@@ -64,13 +68,18 @@ class system(object):
         if not objects is None:
             ephem_data.limit_objects(objects)
 
-        if start_time is None:
-            start_time = time.time()
-        state_array = ephem_data.state(start_time)
+        if not start_time is None:
+            start_time = float(time.time())
+        state_array = ephem_data.state(self.start_time)
         mass_array = ephem_data.masses
         name_array = ephem_data.names
     
-        new_system = cls.from_state(state_array, mass_array, name_array, *args, **kwargs)
+        new_system = cls.from_state(state_array,
+            mass_array,
+            name_array,
+            start_time = start_time,
+            *args, **kwargs)
+
         if verbose:
             print(new_system)
 
@@ -176,7 +185,7 @@ class system(object):
 
 
         results, times = integ.integrate(state = self.get_state(),
-            save_steps = True, initial_time = 0) 
+            save_steps = True, initial_time = self.start_time) 
 
         self._history = [times, np.array(results)]
         return self._history
@@ -230,7 +239,7 @@ def rocket_system(railed_system):
             rocket_states = np.array([ephemerides.object_state(rocket_body,start_time)]*rocket_count)
         super().__init__(masses = np.array([0]*rocket_count), *args, **kwargs)
 
-    def run_simulation(self, *args, **kwargs):
+    def run_simulation(self, rocket_delta_vs = None, *args, **kwargs):
         pass
 
 if __name__ == "__main__":

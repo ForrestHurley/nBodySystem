@@ -25,15 +25,17 @@ class gravity(object):
         pass
 
 class particle_particle(gravity):
+    def __init__(self, minimum_distance = 10, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.minimum_distance = 10
+
     def two_body_acc(self, posA, posB, massA):
             direction = posA - posB 
             distance = np.expand_dims(np.linalg.norm(direction, axis = -1),-1)
             norm_dir = direction / distance
             raw_acc = (self.G * massA / (distance * distance)) * norm_dir
-            if np.all(np.isfinite(raw_acc)):
-                return raw_acc
-            else:
-                return 0
+            raw_acc = np.where(distance > self.minimum_distance, raw_acc, 0)
+            return raw_acc
         
     def _get_acceleration(self, bodies):
         body_iteration = permutations(zip(self.masses, bodies, range(self.masses.shape[0])),2)
