@@ -62,7 +62,6 @@ class event_integrator(integrator):
                 new_state += self.discrete_events[self.discrete_index][1]
                 self.discrete_index += 1
         
-                print("Activated")
         return new_state
 
 class euler(event_integrator):

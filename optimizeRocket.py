@@ -1,11 +1,12 @@
 import evolve
 from evaluatePath import path_evaluator, body_value, distance_threshold
-import ephemerides
-from nBody import rocket_system
+from ephemerides import ephemerides
+import nBody
 import plot
 import time
+import numpy as np
 
-def rocket_indiv(evolve.individual):
+class rocket_indiv(evolve.individual):
     def __init__(self, max_random_v = 10,
             mean_random_v_delta = 0.5,
             initial_time = None,
@@ -15,7 +16,7 @@ def rocket_indiv(evolve.individual):
         super().__init__(data = None, data_shape = (4,))
         self.max_random_v = max_random_v
         self.mean_random_v_delta = mean_random_v_delta
-        if initial_time = None:
+        if initial_time is None:
             initial_time = float(time.time())
         self.initial_time = initial_time
         self.max_random_time = max_random_time
@@ -23,8 +24,8 @@ def rocket_indiv(evolve.individual):
 
     def generate_random_column(self):
         return np.concatenate(
-            ([self.initial_time + np.random.rand(1) * (self.max_random_time - self.initial_time)],
-            np.random.rand(3) * self.max_random_v))
+            [self.initial_time + np.random.rand(1) * (self.max_random_time - self.initial_time),
+            np.random.rand(3) * self.max_random_v])
 
     def mutate_col(self, column):
         column[0] += np.random.standard_normal(size = 1) * self.mean_random_time_delta
@@ -34,10 +35,11 @@ def rocket_indiv(evolve.individual):
     def organize_genes(self):
         self.data.sort(key = lambda x : x[0])
 
-def rocket_eval(evolve.basic_evaluation):
-    def __init__(self, ephemerides, value_list = None, total_sim_time = 60*60*24*365.25*2, *args, **kwargs):
+class rocket_eval(evolve.basic_evaluation):
+    def __init__(self, ephemerides, value_list = None, total_sim_time = 60*60*24*365.25*2, verbose = False, *args, **kwargs):
         self._rocket_simulation = nBody.rocket_system(ephemerides = ephemerides, *args, **kwargs)
         self.sim_time = total_sim_time
+        self.verbose = verbose
         
         if value_list is None:
             value_list = [body_value(body = 599, value = 100)]
@@ -46,8 +48,9 @@ def rocket_eval(evolve.basic_evaluation):
 
     def __call__(self, individual_list):
         times, locations = self._rocket_simulation.run_simulation(
-            rocket_delta_vs = individual_list,
-            total_time = sim_time)
+            rocket_delta_vs = [rocket.data for rocket in individual_list],
+            total_time = self.sim_time,
+            verbose = self.verbose)
 
         rocket_scores = self.path_eval(times, locations)
 
@@ -66,7 +69,8 @@ def main():
         rocket_count = pop_size,
         start_time = float(time.time()),
         total_sim_time = 60 * 60 * 24 * 365.25 * 1,
-        h = 60 * 60 * 12)
+        h = 60 * 60 * 12,
+        verbose = True)
 
     #initialize rocket population
     evolution_environment = evolve.basic_evolution(
@@ -79,7 +83,7 @@ def main():
     evolution_environment.add_remove_gene_proportion = 0.01
 
     #run simulation
-    evolution_environment.run(evolution(generations = 20, verbose = True))
+    evolution_environment.run_evolution(generations = 20, verbose = True)
     
     #print stats
     print(evolution_environment)

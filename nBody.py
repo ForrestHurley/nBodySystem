@@ -35,10 +35,11 @@ class ephemerides_rails(integrator.differential_equation):
         return system.loc_vel_to_state(dx,dv)
 
 class system(object):
-    def __init__(self, start_time = None, h = 0.1):
-        self.gravity = gravity.particle_particle
+    def __init__(self, masses = None, start_time = None, h = 0.1):
         self._locations = None
-        self._masses = np.array([])
+        if masses is None:
+            masses = np.array([])
+        self._masses = masses
         self._velocities = None
         self._names = np.array([])
         self._history = []
@@ -184,7 +185,6 @@ class system(object):
         integ.steps = int(total_time / self.h)
         integ.verbose = verbose
 
-
         results, times = integ.integrate(state = self.get_state(),
             save_steps = True, initial_time = self.start_time) 
 
@@ -232,49 +232,61 @@ class railed_system(system):
         draw_data = np.concatenate((positions, rail_paths), axis = 0)
         self._call_plotter(positions = draw_data, rate = rate)
 
-def rocket_system(railed_system):
+class rocket_system(railed_system):
     def __init__(self, ephemerides, start_time = None, rocket_count = 1, rocket_states = None, rocket_body = 399, *args, **kwargs):
         if not rocket_states is None:
             rocket_count = rocket_states.shape[0]
         else:
-            rocket_states = np.array([ephemerides.object_state(rocket_body,start_time)]*rocket_count)
+            rocket_states = np.array(ephemerides.object_state(rocket_body,start_time))
+
+        self.rocket_state = rocket_states
+
         super().__init__(
+            ephemerides = ephemerides,
             masses = np.array([0]*rocket_count),
             start_time = start_time,
             *args, **kwargs)
 
-        self.set_state(rocket_states)
+        self.set_state([self.rocket_state]*rocket_count)
 
     def rocket_delta_list_to_world(self, delta_list = None):
-        times = [ delta[0] for delta in rocket for rocket in delta_list ]
+        times = [ delta[0] for rocket in delta_list for delta in rocket ]
 
-        min_time = min(times)
-        max_time = max(times)
-        time_range = max_time - min_time
+        [print(rocket) for rocket in delta_list]
 
-        n_steps = math.ciel(time_range / self.h)
+        if len(times) > 0:
+            min_time = min(times)
+            max_time = max(times)
+            time_range = max_time - min_time
 
-        delta_world = [np.zeros(shape = (len(delta_list),6), dtype = 'float')]*n_steps
+            n_steps = math.ceil(time_range / self.h)
 
-        times = np.arange(n_steps) * self.h + min_time
+            delta_world = [np.zeros(shape = (len(delta_list),2,3), dtype = 'float')]*n_steps
 
-        for rocket, rocket_index in zip(delta_list, range(len(delta_list))):
-            for delta in rocket:
-                index = floor((delta[0] - min_time) / self.h)
+            times = np.arange(n_steps) * self.h + min_time
 
-                delta_world[index][rocket_index,3:] += delta[1:]
+            for rocket, rocket_index in zip(delta_list, range(len(delta_list))):
+                for delta in rocket:
+                    index = math.floor((delta[0] - min_time) / self.h)
 
-        return list(zip(times, delta_world))
+                    delta_world[index][rocket_index,1] += delta[1:]
 
-    def run_simulation(self, rocket_delta_vs = None, *args, **kwargs):
+            return list(zip(times, delta_world))
 
+        return [[],[]]
+
+    def run_simulation(self, total_time, rocket_delta_vs = None, verbose = False):
+
+        self.set_state([self.rocket_state]*len(rocket_delta_vs))
+        self.set_masses([0]*len(rocket_delta_vs))
+    
         integ = self.default_integ
-        integ.diff_eq = ephemerides_rails()
+        integ.diff_eq = self.diff_eq
         integ.h = self.h
         integ.steps = int(total_time / self.h)
         integ.verbose = verbose
-    
-        integ.discrete_events = self.delta_v_list_to_array(rocket_delta_vs)
+   
+        integ.discrete_events = self.rocket_delta_list_to_world(rocket_delta_vs)
 
         results, times = integ.integrate(
             state = self.get_state(),

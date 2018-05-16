@@ -11,7 +11,7 @@ class body_value(object):
         return distances
 
     def __call__(self, times, rocket_locs, body_locs):
-        distances = self.get_distance(rocket_locs, body_locs)
+        distances = self.get_distances(rocket_locs, body_locs)
         total = np.sum( np.expand_dims(times, 1) * distances, axis = 0 )
         reciprocal = self.value / total
         return reciprocal
@@ -32,16 +32,18 @@ class path_evaluator(object):
         self.ephemerides = ephemerides
         self.value_list = value_list
     
-    def __call__(self, times, locations):
-        scores = np.zeros(shape = locations.shape[1])
+    def __call__(self, times, states):
+        scores = np.zeros(shape = states.shape[1])
 
         body_set = list(set(value_check.body for value_check in self.value_list))
 
         body_locs = {body : locs for body, locs in 
             zip(body_set, self.ephemerides.object_paths(objects = body_set, times = times)) }
 
+        locations = np.take(states, 0, axis = -2)
+
         for value_check in self.value_list:
-            scores += value_check(times, locations,body_locs[value_check.body])
+            scores += value_check(times, locations, body_locs[value_check.body])
 
         return scores
             

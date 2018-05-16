@@ -33,7 +33,10 @@ class ephemerides(object):
     def limit_objects(self,objects):
         self._nullify_derived()
         self._object_list = np.intersect1d(self.object_list,objects)
-        del self._object_set
+        try:
+            del self._object_set
+        except AttributeError:
+            pass
 
     @property
     def object_list(self):
@@ -98,7 +101,7 @@ class ephemerides(object):
 
     def object_state(self, obj, time):
         if obj in self.object_set:
-            return spice.spkezr(str(obj), time, 'J2000', 'NONE', '0')[0]
+            return np.reshape(spice.spkezr(str(obj), time, 'J2000', 'NONE', '0')[0],(2,3))
         else:
             return None
 

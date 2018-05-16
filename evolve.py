@@ -129,22 +129,19 @@ class basic_evolution(object):
         return self.score_list[-1]
 
     def get_pop_scores(self):
-        need_scores = ((idx, indiv) for idx, indiv in
+        need_scores = [(idx, indiv) for idx, indiv in
             zip(range(len(self.indiv_list)),self.indiv_list)
-            if indiv.score is None)
+            if indiv.score is None]
 
-        try:
+        if len(need_scores) > 0:
             ids, indivs = zip(*need_scores)
 
             scores = self.eval_func(indivs)
             
             for indiv_id, indiv_score in zip(ids, scores):
                 self.indiv_list[indiv_id].score = indiv_score
-        except ValueError:
-            pass
 
         out_scores = [indiv.score for indiv in self.indiv_list]
-        #print(out_scores)
         return out_scores
 
     def get_sorted_scores(self):
