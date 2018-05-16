@@ -61,7 +61,6 @@ class event_integrator(integrator):
             if time > self.discrete_events[self.discrete_index][0]:
                 new_state += self.discrete_events[self.discrete_index][1]
                 self.discrete_index += 1
-        
         return new_state
 
 class euler(event_integrator):

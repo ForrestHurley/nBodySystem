@@ -253,9 +253,14 @@ class rocket_system(railed_system):
         times = [ delta[0] for rocket in delta_list for delta in rocket ]
 
         if len(times) > 0:
-            min_time = min(times)
-            max_time = max(times)
-            time_range = max_time - min_time
+            if len(times) > 1:
+                min_time = min(times)
+                max_time = max(times)
+                time_range = max_time - min_time
+            else:
+                min_time = times[0]
+                max_time = times[0]
+                time_range = self.h
 
             n_steps = math.ceil(time_range / self.h)
 
@@ -271,7 +276,7 @@ class rocket_system(railed_system):
 
             return list(zip(times, delta_world))
 
-        return [[],[]]
+        return []
 
     def run_simulation(self, total_time, rocket_delta_vs = None, verbose = False):
 

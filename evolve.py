@@ -100,6 +100,7 @@ class basic_evolution(object):
         self.initialize_pop(size = self.pop_size)
         self.score_list = []
         self.total_generations = 0
+        self.best_list = []
 
     def initialize_pop(self, size = 100):
         self.indiv_list = [ self.indiv.random() for i in range(size) ]
@@ -110,6 +111,8 @@ class basic_evolution(object):
             self.get_best_score(),
             self.get_average_topn_score(n = self.topn),
             self.get_average_score()])
+
+        self.best_list.append(self.get_best())
 
         for i in range(generations):
             if verbose:
@@ -124,6 +127,8 @@ class basic_evolution(object):
                 self.get_best_score(),
                 self.get_average_topn_score(n = self.topn),
                 self.get_average_score()])
+
+            self.best_list.append(self.get_best())
 
             self.preserve_random_best( p = self.keep_proportion )
             self.mate_random( n = self.pop_size - len(self.indiv_list) )
@@ -179,6 +184,9 @@ class basic_evolution(object):
         for elem in sorted(worst_elems, reverse = True):
             del self.indiv_list[elem]
       
+    def get_best(self):
+        return self.get_n_best(1)[0][0]
+
     def get_n_best(self, n = 5):
         sorted_scores = self.get_sorted_scores()
 

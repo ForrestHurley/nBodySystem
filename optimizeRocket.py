@@ -40,7 +40,9 @@ class rocket_eval(evolve.basic_evaluation):
         self._rocket_simulation = nBody.rocket_system(ephemerides = ephemerides, *args, **kwargs)
         self.sim_time = total_sim_time
         self.verbose = verbose
-        
+       
+        self.complexity_baseline = 100
+ 
         if value_list is None:
             value_list = [body_value(body = 599, value = 100)]
 
@@ -52,13 +54,24 @@ class rocket_eval(evolve.basic_evaluation):
             total_time = self.sim_time,
             verbose = self.verbose)
 
-        rocket_scores = self.path_eval(times, locations)
+        path_scores = self.path_eval(times, locations)
+
+        complexity_scores = np.array([len(indiv.data) for indiv in individual_list]) + self.complexity_baseline
+
+        rocket_scores = path_scores / 1#complexity_scores
 
         return rocket_scores
 
+    def plot(self, individual_list):
+        times, locations = self._rocket_simulation.run_simulation(
+            rocket_delta_vs = [rocket.data for rocket in individual_list],
+            total_time = self.sim_time)
+
+        self._rocket_simulation.draw()
+
 def main():
 
-    pop_size = 50
+    pop_size = 30
 
     #initialize ephemerides
     file_name = "../Data/solarSystem.txt"
@@ -68,8 +81,8 @@ def main():
     fitness_func = rocket_eval(ephemerides = eph_data,
         rocket_count = pop_size,
         start_time = float(time.time()),
-        total_sim_time = 60 * 60 * 24 * 365.25 * 1,
-        h = 60 * 60 * 12,
+        total_sim_time = 60 * 60 * 24 * 365.25 * 2,
+        h = 60 * 60 * 24,
         verbose = False)
 
     #initialize rocket population
@@ -77,16 +90,16 @@ def main():
         eval_func = fitness_func,
         individual_class = rocket_indiv,
         pop_size = pop_size)
-    evolution_environment.keep_proportion = 0.4
-    evolution_environment.indiv_mutate_proportion = 0.1
-    evolution_environment.gene_mutate_proportion = 0.2
+    evolution_environment.keep_proportion = 0.3
+    evolution_environment.indiv_mutate_proportion = 0.3
+    evolution_environment.gene_mutate_proportion = 0.4
     evolution_environment.add_remove_gene_proportion = 0.1
 
     #run simulation
-    evolution_environment.run_evolution(generations = 20, verbose = True)
+    evolution_environment.run_evolution(generations = 6, verbose = True)
     
     #print stats
-    print(evolution_environment)
+    #print(evolution_environment)
 
     scores = np.array(evolution_environment.score_list)
     from matplotlib import pyplot as plt
@@ -96,6 +109,13 @@ def main():
     plt.show()
 
     #show best path
+
+    best_params = evolution_environment.best_list
+    print("Total length", len(best_params))
+    print("5 length", len(list(set(best_params[-5:]))))
+    #[print(param) for param in best_params[-5:]]
+    fitness_func.plot(list(set(best_params[-5:])))
+
 
 if __name__ == "__main__":
     main()
