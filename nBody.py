@@ -252,8 +252,6 @@ class rocket_system(railed_system):
     def rocket_delta_list_to_world(self, delta_list = None):
         times = [ delta[0] for rocket in delta_list for delta in rocket ]
 
-        [print(rocket) for rocket in delta_list]
-
         if len(times) > 0:
             min_time = min(times)
             max_time = max(times)

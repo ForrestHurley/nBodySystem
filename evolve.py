@@ -50,13 +50,14 @@ class individual(object):
                 del self.data[rem]
 
     def mate(self, other):
-        rand_self = np.random.rand(len(self.data)) < 0.5
-        rand_other = np.random.rand(len(other.data)) < 0.5
+        new_gene_count = int(len(self.data) + len(other.data)/2)
+        rand_self = list(zip(np.random.rand(len(self.data)), self.data))
+        rand_other = list(zip(np.random.rand(len(other.data)), other.data))
 
-        new_self = [ slf for slf, take in zip(self.data, rand_self) if take ]
-        new_other = [ oth for oth, take in zip(other.data, rand_other) if take ]
+        combined = rand_self + rand_other
+        sorted(combined)
 
-        child_data = new_self + new_other
+        child_data = [val[1] for val in combined[:new_gene_count]]
         child = individual(data = child_data, data_shape = self.data_shape)
         child.organize_genes()
         return child
@@ -105,10 +106,18 @@ class basic_evolution(object):
 
     def run_evolution(self, generations = 100, verbose = False):
 
+        self.score_list.append([
+            self.get_best_score(),
+            self.get_average_topn_score(n = self.topn),
+            self.get_average_score()])
+
         for i in range(generations):
             if verbose:
-                sys.stdout.write("\033[K")
-                print("Started generation {}".format(self.total_generations), end = "\r")
+                #sys.stdout.write("\033[K")
+                print("Started generation {0}. Best score: {1:.4E}, Average topn score: {2:.4E}".format(
+                    self.total_generations, 
+                    self.score_list[-1][0],
+                    self.score_list[-1][1]), end = "\n")
                 sys.stdout.flush()
 
             self.score_list.append([

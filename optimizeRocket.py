@@ -70,7 +70,7 @@ def main():
         start_time = float(time.time()),
         total_sim_time = 60 * 60 * 24 * 365.25 * 1,
         h = 60 * 60 * 12,
-        verbose = True)
+        verbose = False)
 
     #initialize rocket population
     evolution_environment = evolve.basic_evolution(
@@ -80,7 +80,7 @@ def main():
     evolution_environment.keep_proportion = 0.4
     evolution_environment.indiv_mutate_proportion = 0.1
     evolution_environment.gene_mutate_proportion = 0.2
-    evolution_environment.add_remove_gene_proportion = 0.01
+    evolution_environment.add_remove_gene_proportion = 0.1
 
     #run simulation
     evolution_environment.run_evolution(generations = 20, verbose = True)
